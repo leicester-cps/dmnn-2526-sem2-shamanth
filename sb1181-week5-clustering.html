@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Week 5: Clustering and PCA — Online Retail Dataset</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="week5_clustering_R_files/libs/clipboard/clipboard.min.js"></script>
+<script src="week5_clustering_R_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="week5_clustering_R_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="week5_clustering_R_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="week5_clustering_R_files/libs/quarto-html/popper.min.js"></script>
+<script src="week5_clustering_R_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="week5_clustering_R_files/libs/quarto-html/anchor.min.js"></script>
+<link href="week5_clustering_R_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="week5_clustering_R_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="week5_clustering_R_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="week5_clustering_R_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="week5_clustering_R_files/libs/bootstrap/bootstrap-d6a003b94517c951b2d65075d42fb01b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#step-1-unit-of-analysis" id="toc-step-1-unit-of-analysis" class="nav-link active" data-scroll-target="#step-1-unit-of-analysis">Step 1 — Unit of Analysis</a>
+  <ul class="collapse">
+  <li><a href="#what-are-we-clustering" id="toc-what-are-we-clustering" class="nav-link" data-scroll-target="#what-are-we-clustering">What are we clustering?</a></li>
+  <li><a href="#why-customers" id="toc-why-customers" class="nav-link" data-scroll-target="#why-customers">Why customers?</a></li>
+  </ul></li>
+  <li><a href="#step-2-data-loading-and-feature-construction" id="toc-step-2-data-loading-and-feature-construction" class="nav-link" data-scroll-target="#step-2-data-loading-and-feature-construction">Step 2 — Data Loading and Feature Construction</a>
+  <ul class="collapse">
+  <li><a href="#loading-and-cleaning" id="toc-loading-and-cleaning" class="nav-link" data-scroll-target="#loading-and-cleaning">Loading and Cleaning</a></li>
+  <li><a href="#constructing-customer-level-features" id="toc-constructing-customer-level-features" class="nav-link" data-scroll-target="#constructing-customer-level-features">Constructing Customer-Level Features</a></li>
+  </ul></li>
+  <li><a href="#step-3-scaling" id="toc-step-3-scaling" class="nav-link" data-scroll-target="#step-3-scaling">Step 3 — Scaling</a>
+  <ul class="collapse">
+  <li><a href="#why-scaling-is-necessary" id="toc-why-scaling-is-necessary" class="nav-link" data-scroll-target="#why-scaling-is-necessary">Why scaling is necessary</a></li>
+  <li><a href="#what-method-we-used" id="toc-what-method-we-used" class="nav-link" data-scroll-target="#what-method-we-used">What method we used</a></li>
+  <li><a href="#what-would-happen-without-scaling" id="toc-what-would-happen-without-scaling" class="nav-link" data-scroll-target="#what-would-happen-without-scaling">What would happen without scaling</a></li>
+  </ul></li>
+  <li><a href="#step-4-apply-clustering" id="toc-step-4-apply-clustering" class="nav-link" data-scroll-target="#step-4-apply-clustering">Step 4 — Apply Clustering</a>
+  <ul class="collapse">
+  <li><a href="#k-means-clustering" id="toc-k-means-clustering" class="nav-link" data-scroll-target="#k-means-clustering">4.1 K-Means Clustering</a></li>
+  <li><a href="#dbscan-density-based-clustering" id="toc-dbscan-density-based-clustering" class="nav-link" data-scroll-target="#dbscan-density-based-clustering">4.2 DBSCAN (Density-Based Clustering)</a></li>
+  <li><a href="#hierarchical-clustering" id="toc-hierarchical-clustering" class="nav-link" data-scroll-target="#hierarchical-clustering">4.3 Hierarchical Clustering</a></li>
+  </ul></li>
+  <li><a href="#step-5---visualisation-and-evaluation" id="toc-step-5---visualisation-and-evaluation" class="nav-link" data-scroll-target="#step-5---visualisation-and-evaluation">Step 5 - Visualisation and Evaluation</a>
+  <ul class="collapse">
+  <li><a href="#pca-visualisation" id="toc-pca-visualisation" class="nav-link" data-scroll-target="#pca-visualisation">PCA Visualisation</a></li>
+  <li><a href="#pca-loadings" id="toc-pca-loadings" class="nav-link" data-scroll-target="#pca-loadings">PCA Loadings</a></li>
+  </ul></li>
+  <li><a href="#discussion-and-limitations" id="toc-discussion-and-limitations" class="nav-link" data-scroll-target="#discussion-and-limitations">Discussion and Limitations</a>
+  <ul class="collapse">
+  <li><a href="#what-distinguishes-each-cluster" id="toc-what-distinguishes-each-cluster" class="nav-link" data-scroll-target="#what-distinguishes-each-cluster">What distinguishes each cluster?</a></li>
+  <li><a href="#are-clusters-balanced" id="toc-are-clusters-balanced" class="nav-link" data-scroll-target="#are-clusters-balanced">Are clusters balanced?</a></li>
+  <li><a href="#sensitivity-to-parameter-choices" id="toc-sensitivity-to-parameter-choices" class="nav-link" data-scroll-target="#sensitivity-to-parameter-choices">Sensitivity to parameter choices</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
+  <li><a href="#key-takeaway" id="toc-key-takeaway" class="nav-link" data-scroll-target="#key-takeaway">Key takeaway</a></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="week5_clustering_R.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Week 5: Clustering and PCA — Online Retail Dataset</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div style="page-break-after: always;"></div>
+<section id="step-1-unit-of-analysis" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="step-1-unit-of-analysis">Step 1 — Unit of Analysis</h2>
+<section id="what-are-we-clustering" class="level3">
+<h3 class="anchored" data-anchor-id="what-are-we-clustering">What are we clustering?</h3>
+<p>We will group <strong>customers</strong>. Every row in our data set corresponds to one particular <strong>customer</strong>, and is uniquely represented through the <code>Customer ID</code> column.</p>
+</section>
+<section id="why-customers" class="level3">
+<h3 class="anchored" data-anchor-id="why-customers">Why customers?</h3>
+<p>The Online Retail data has raw row level detail of each line item on an invoice that are too small to identify behavioral patterns in the individual events of each purchase.</p>
+<p>Clustering at the <strong>customer level</strong> has value due to:</p>
+<ul>
+<li>The ability to identify <strong>behavioural segments</strong>, or groups of customers with common shopping behaviours.</li>
+<li>Segmentation is <strong>actionable by the customer segment</strong> when it comes to marketing, retention and inventory decision making.</li>
+<li>When I <strong>aggregate all transactions per customer,</strong> I produce a rich set of numeric features (spend, frequency, recency) to measure how customers have shopped over time.</li>
+</ul>
+<p>Clustering by invoice or product can provide different insights into the behavior of customers but will have less business relevance than analysing at the customer level which aligns with how most retailers perform their analyses (i.e.&nbsp;RFM).</p>
+<hr>
+</section>
+</section>
+<section id="step-2-data-loading-and-feature-construction" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="step-2-data-loading-and-feature-construction">Step 2 — Data Loading and Feature Construction</h2>
+<section id="loading-and-cleaning" class="level3">
+<h3 class="anchored" data-anchor-id="loading-and-cleaning">Loading and Cleaning</h3>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Loading all five CSV parts and combine</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>retail <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"online_retail_II.csv"</span>, <span class="at">header =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Raw dataset:"</span>, <span class="fu">nrow</span>(retail), <span class="st">"rows,"</span>, <span class="fu">ncol</span>(retail), <span class="st">"columns</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Raw dataset: 525461 rows, 8 columns</code></pre>
+</div>
+</div>
+<p>I clean the data by removing rows without a customer ID (cannot assign to a customer), negative quantities (returns/cancellations), and zero or negative prices (adjustments or errors):</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>retail <span class="ot">&lt;-</span> retail <span class="sc">%&gt;%</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(Customer.ID),</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>         Quantity <span class="sc">&gt;</span> <span class="dv">0</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>         Price <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">Customer.ID =</span> <span class="fu">as.integer</span>(Customer.ID),</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">InvoiceDate =</span> <span class="fu">dmy_hm</span>(InvoiceDate),</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">TotalSpend  =</span> Quantity <span class="sc">*</span> Price</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Cleaned dataset:"</span>, <span class="fu">nrow</span>(retail), <span class="st">"rows</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cleaned dataset: 407664 rows</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Date range:"</span>, <span class="fu">as.character</span>(<span class="fu">min</span>(retail<span class="sc">$</span>InvoiceDate, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"to"</span>, <span class="fu">as.character</span>(<span class="fu">max</span>(retail<span class="sc">$</span>InvoiceDate, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Date range: 2009-12-01 07:45:00 to 2010-12-09 20:01:00 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Unique customers:"</span>, <span class="fu">n_distinct</span>(retail<span class="sc">$</span>Customer.ID), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Unique customers: 4312 </code></pre>
+</div>
+</div>
+</section>
+<section id="constructing-customer-level-features" class="level3">
+<h3 class="anchored" data-anchor-id="constructing-customer-level-features">Constructing Customer-Level Features</h3>
+<p>Beginning with the creation of six numerical attributes (features) that will represent different aspects of customer purchasing behavior, we create the following six feature columns:</p>
+<ol type="1">
+<li><p>Total spend: This is the total amount spent by the customer as determined by the sum of Quantity * Price from all transactions.</p></li>
+<li><p>Number of transactions: This attribute determines the number of invoices issued to the customer and therefore represents how frequently the customer purchases from the business.</p></li>
+<li><p>Recency: This is an attribute that indicates the time in days since the most recent transaction was made by the customer, based on the data set end date. Therefore this captures whether or not the customer has been active within the past few months.</p></li>
+<li><p>Number of distinct products: This is an attribute that identifies the number of unique stock codes purchased by the customer. It is an indication of the breadth of the customers’ buying habits.</p></li>
+<li><p>Average basket value: The average basket value is the average of all spends per invoice. The average basket value may be an indicator of the typical order size that can be expected from the customer.</p></li>
+<li><p>Average quantity per transaction: The average quantity per transaction represents the mean quantity of items purchased per line item. The average quantity per transaction may be an indicator of the bulk-buying tendency of the customer.</p></li>
+</ol>
+<p>Each of these six features provides a unique dimension of the way in which the customer interacts with the business, providing a complete picture of the customer’s relationship with the company.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>reference_date <span class="ot">&lt;-</span> <span class="fu">max</span>(retail<span class="sc">$</span>InvoiceDate, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span> <span class="fu">days</span>(<span class="dv">1</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>customers <span class="ot">&lt;-</span> retail <span class="sc">%&gt;%</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Customer.ID) <span class="sc">%&gt;%</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">total_spend          =</span> <span class="fu">sum</span>(TotalSpend),</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">num_transactions     =</span> <span class="fu">n_distinct</span>(Invoice),</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">recency              =</span> <span class="fu">as.numeric</span>(<span class="fu">difftime</span>(reference_date,</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>                                               <span class="fu">max</span>(InvoiceDate),</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>                                               <span class="at">units =</span> <span class="st">"days"</span>)),</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">num_distinct_products =</span> <span class="fu">n_distinct</span>(StockCode),</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_qty_per_txn      =</span> <span class="fu">mean</span>(Quantity),</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Average basket value (mean invoice total per customer)</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>avg_basket <span class="ot">&lt;-</span> retail <span class="sc">%&gt;%</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Customer.ID, Invoice) <span class="sc">%&gt;%</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">invoice_total =</span> <span class="fu">sum</span>(TotalSpend), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Customer.ID) <span class="sc">%&gt;%</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">avg_basket_value =</span> <span class="fu">mean</span>(invoice_total), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>customers <span class="ot">&lt;-</span> customers <span class="sc">%&gt;%</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(avg_basket, <span class="at">by =</span> <span class="st">"Customer.ID"</span>)</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Customer-level dataset:"</span>, <span class="fu">nrow</span>(customers), <span class="st">"customers,"</span>,</span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ncol</span>(customers), <span class="st">"columns</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Customer-level dataset: 4312 customers, 7 columns</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(customers)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Customer.ID     total_spend        num_transactions     recency      
+ Min.   :12346   Min.   :     2.95   Min.   :  1.000   Min.   :  1.00  
+ 1st Qu.:13882   1st Qu.:   307.99   1st Qu.:  1.000   1st Qu.: 18.37  
+ Median :15350   Median :   706.02   Median :  2.000   Median : 53.14  
+ Mean   :15349   Mean   :  2048.24   Mean   :  4.456   Mean   : 91.45  
+ 3rd Qu.:16834   3rd Qu.:  1723.14   3rd Qu.:  5.000   3rd Qu.:136.42  
+ Max.   :18287   Max.   :349164.35   Max.   :205.000   Max.   :374.42  
+ num_distinct_products avg_qty_per_txn    avg_basket_value  
+ Min.   :   1.00       Min.   :   1.000   Min.   :    2.95  
+ 1st Qu.:  17.00       1st Qu.:   5.268   1st Qu.:  182.09  
+ Median :  38.00       Median :   9.343   Median :  287.37  
+ Mean   :  63.65       Mean   :  21.472   Mean   :  378.32  
+ 3rd Qu.:  79.25       3rd Qu.:  14.235   3rd Qu.:  423.58  
+ Max.   :1741.00       Max.   :4460.294   Max.   :11880.84  </code></pre>
+</div>
+</div>
+<p>The summary statistics display considerable right skew for both product diversity and spending a relatively small group of customers spent significantly more than the remainder.</p>
+<hr>
+</section>
+</section>
+<section id="step-3-scaling" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="step-3-scaling">Step 3 — Scaling</h2>
+<section id="why-scaling-is-necessary" class="level3">
+<h3 class="anchored" data-anchor-id="why-scaling-is-necessary">Why scaling is necessary</h3>
+<p>Clustering algorithms like K-means use Euclidean distance to assign observations to clusters. Without scaling:</p>
+<ul>
+<li><code>total_spend</code> ranges from ~3 to ~349,000</li>
+<li><code>recency</code> ranges from 0 to ~374 days</li>
+<li><code>num_transactions</code> ranges from 1 to ~290</li>
+</ul>
+<p>Raw value comparisons will show that “total_spend” dominates completely since it is an order(s) of magnitude larger than “days_since_last_order”. Therefore a £1,000 difference in spending would swamp a 100-day difference in recency even if both were equally useful as segmentation criteria.</p>
+</section>
+<section id="what-method-we-used" class="level3">
+<h3 class="anchored" data-anchor-id="what-method-we-used">What method we used</h3>
+<p>We applied <strong>standardisation</strong> or <strong>z-score scaling</strong>: we subtracted the mean and then divided by the standard deviation for each variable. By doing this, I scaled each feature into having mean = 0 and standard deviation = 1 which meant that each feature was contributing equally to the distance calculation.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>feature_cols <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"total_spend"</span>, <span class="st">"num_transactions"</span>, <span class="st">"recency"</span>,</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"num_distinct_products"</span>, <span class="st">"avg_basket_value"</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"avg_qty_per_txn"</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> customers[, feature_cols]</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>X_scaled <span class="ot">&lt;-</span> <span class="fu">scale</span>(X)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Scaled feature means (should be ~0):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Scaled feature means (should be ~0):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">colMeans</span>(X_scaled), <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          total_spend      num_transactions               recency 
+                    0                     0                     0 
+num_distinct_products      avg_basket_value       avg_qty_per_txn 
+                    0                     0                     0 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Scaled feature std devs (should be ~1):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Scaled feature std devs (should be ~1):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">apply</span>(X_scaled, <span class="dv">2</span>, sd), <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          total_spend      num_transactions               recency 
+                    1                     1                     1 
+num_distinct_products      avg_basket_value       avg_qty_per_txn 
+                    1                     1                     1 </code></pre>
+</div>
+</div>
+</section>
+<section id="what-would-happen-without-scaling" class="level3">
+<h3 class="anchored" data-anchor-id="what-would-happen-without-scaling">What would happen without scaling</h3>
+<p>If I were to use K-means without scaling, it would essentially group based solely upon “total_spend” as this is much larger in magnitude compared to the other feature values; therefore I would have tiers in terms of money rather than multivariate behavioral groupings. The other dimensions such as “recency” and “product_diversity”, which are also important when trying to understand how customers behave, would be ignored.</p>
+<hr>
+</section>
+</section>
+<section id="step-4-apply-clustering" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="step-4-apply-clustering">Step 4 — Apply Clustering</h2>
+<section id="k-means-clustering" class="level3">
+<h3 class="anchored" data-anchor-id="k-means-clustering">4.1 K-Means Clustering</h3>
+<section id="choosing-k-elbow-method-and-silhouette-scores" class="level4">
+<h4 class="anchored" data-anchor-id="choosing-k-elbow-method-and-silhouette-scores">Choosing k: Elbow Method and Silhouette Scores</h4>
+<p>To determine an appropriate number of clusters I ran K-means over k = 2 through 10 and plotted the WCSS and Silhouette score:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(cluster)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>K_range <span class="ot">&lt;-</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">10</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>wcss     <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(K_range))</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>sil_vals <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(K_range))</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(K_range)) {</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  k  <span class="ot">&lt;-</span> K_range[i]</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>  km <span class="ot">&lt;-</span> <span class="fu">kmeans</span>(X_scaled, <span class="at">centers =</span> k, <span class="at">nstart =</span> <span class="dv">20</span>)</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  wcss[i] <span class="ot">&lt;-</span> km<span class="sc">$</span>tot.withinss</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  sil_vals[i] <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">silhouette</span>(km<span class="sc">$</span>cluster, <span class="fu">dist</span>(X_scaled))[, <span class="st">"sil_width"</span>])</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(K_range, wcss, <span class="at">type =</span> <span class="st">"b"</span>, <span class="at">pch =</span> <span class="dv">19</span>, <span class="at">col =</span> <span class="st">"blue"</span>,</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Number of Clusters (k)"</span>, <span class="at">ylab =</span> <span class="st">"WCSS"</span>,</span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Elbow Method"</span>)</span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>()</span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(K_range, sil_vals, <span class="at">type =</span> <span class="st">"b"</span>, <span class="at">pch =</span> <span class="dv">15</span>, <span class="at">col =</span> <span class="st">"red"</span>,</span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Number of Clusters (k)"</span>, <span class="at">ylab =</span> <span class="st">"Silhouette Score"</span>,</span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Silhouette Score by k"</span>)</span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="week5_clustering_R_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The Elbow graph shows a steep decline in slope from k=2 to k=3 and then decreases gradually after that point. The Silhouette score is greatest at k=2; however, this will result in an oversimplified split. I choose <strong>k=4</strong> as a good balance of interpretability (I have enough clusters to identify meaningful segments), and parsimony (I do not have too many clusters to make them indistinguishable). The Silhouette Score at k=4 (~.40) represents a good amount of separation among the clusters, which is representative of most behavioral data.</p>
+</section>
+<section id="fitting-k-means-with-k-4" class="level4">
+<h4 class="anchored" data-anchor-id="fitting-k-means-with-k-4">Fitting K-Means with k = 4</h4>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>kmeans_model <span class="ot">&lt;-</span> <span class="fu">kmeans</span>(X_scaled, <span class="at">centers =</span> <span class="dv">4</span>, <span class="at">nstart =</span> <span class="dv">20</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>customers<span class="sc">$</span>kmeans_cluster <span class="ot">&lt;-</span> kmeans_model<span class="sc">$</span>cluster</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"K-Means Cluster Sizes:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>K-Means Cluster Sizes:</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(customers<span class="sc">$</span>kmeans_cluster)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+   1    2    3    4 
+3208   12 1087    5 </code></pre>
+</div>
+</div>
+</section>
+<section id="interpreting-cluster-centres" class="level4">
+<h4 class="anchored" data-anchor-id="interpreting-cluster-centres">Interpreting Cluster Centres</h4>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>cluster_means <span class="ot">&lt;-</span> customers <span class="sc">%&gt;%</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(kmeans_cluster) <span class="sc">%&gt;%</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="fu">across</span>(<span class="fu">all_of</span>(feature_cols), mean), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Cluster Centres (mean feature values):</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cluster Centres (mean feature values):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">as.data.frame</span>(cluster_means), <span class="at">digits =</span> <span class="dv">2</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> kmeans_cluster total_spend num_transactions recency num_distinct_products
+              1        2118              5.0    41.9                    74
+              2      116467            114.7     4.3                   800
+              3         511              1.6   238.4                    25
+              4       17140              3.2   133.3                    26
+ avg_basket_value avg_qty_per_txn
+              389              18
+             1178              52
+              307              19
+             6962            2735</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Heatmap of standardised cluster means</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>cluster_means_mat <span class="ot">&lt;-</span> customers <span class="sc">%&gt;%</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(kmeans_cluster) <span class="sc">%&gt;%</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="fu">across</span>(<span class="fu">all_of</span>(feature_cols), mean), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>kmeans_cluster) <span class="sc">%&gt;%</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.matrix</span>()</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Standardise each column relative to overall mean/sd</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(cluster_means_mat))) {</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>  cluster_means_mat[, j] <span class="ot">&lt;-</span> (cluster_means_mat[, j] <span class="sc">-</span> <span class="fu">mean</span>(X[[feature_cols[j]]])) <span class="sc">/</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>                              <span class="fu">sd</span>(X[[feature_cols[j]]])</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(cluster_means_mat) <span class="ot">&lt;-</span> <span class="fu">paste</span>(<span class="st">"Cluster"</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(cluster_means_mat) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Total</span><span class="sc">\n</span><span class="st">Spend"</span>, <span class="st">"Num</span><span class="sc">\n</span><span class="st">Txns"</span>, <span class="st">"Recency"</span>,</span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>                                  <span class="st">"Distinct</span><span class="sc">\n</span><span class="st">Products"</span>, <span class="st">"Avg Basket</span><span class="sc">\n</span><span class="st">Value"</span>,</span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>                                  <span class="st">"Avg Qty</span><span class="sc">\n</span><span class="st">per Txn"</span>)</span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a><span class="fu">heatmap</span>(cluster_means_mat,</span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>        <span class="at">Colv =</span> <span class="cn">NA</span>, <span class="at">Rowv =</span> <span class="cn">NA</span>,</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>        <span class="at">scale =</span> <span class="st">"none"</span>,</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>        <span class="at">col  =</span> <span class="fu">colorRampPalette</span>(<span class="fu">c</span>(<span class="st">"steelblue"</span>, <span class="st">"white"</span>, <span class="st">"firebrick"</span>))(<span class="dv">50</span>),</span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a>        <span class="at">main =</span> <span class="st">"K-Means Cluster Profiles (Standardised Means)"</span>,</span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a>        <span class="at">margins =</span> <span class="fu">c</span>(<span class="dv">10</span>, <span class="dv">8</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="week5_clustering_R_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation of the four clusters:</strong></p>
+<p>There are four segments based on the clusters (keep in mind that labels may be different when running this via Python, therefore you should be able to identify them by their profiles rather than the label):</p>
+<ul>
+<li><p><strong>Active/regular customers</strong> (approximately ~3200): These customers have an average basket size that represents moderate spending. They also have some form of recent purchase history, as well as they have been purchasing a number of different products across approximately 5 purchases. This group represents the core of your customer base.</p></li>
+<li><p><strong>Infrequent/lapse customers</strong> (approximately ~1090): Customers within this group have low spendings and very recent last purchases. In addition, they have few purchases, and they are only purchasing a limited number of products. These customers may be one time shoppers, or they may have churning issues.</p></li>
+<li><p><strong>VIP/Wholesale</strong> (approximately ~12): The top tier of spenders, these customers have extremely high total spending amounts. In addition, they have extremely high numbers of transactions (averaging ~115 invoices) as well as they are purchasing a very wide variety of products (averaging ~800 unique products). These customers are likely resellers or a form of a key account.</p></li>
+<li><p><strong>Bulk Purchasers</strong> (approximately ~5): Bulk purchasers have the highest averages for basket size, as well as the highest averages for quantity per transaction. However, they have the fewest amount of different transactions. Bulk purchasers purchase large quantities per order, however they do so rarely.</p></li>
+</ul>
+<p>As you can see, there is a highly skewed distribution of clusters, with the majority of customers falling into the “regular” category. This is typical of most retail customer bases, which are characterised by a long tail distribution.</p>
+<hr>
+</section>
+</section>
+<section id="dbscan-density-based-clustering" class="level3">
+<h3 class="anchored" data-anchor-id="dbscan-density-based-clustering">4.2 DBSCAN (Density-Based Clustering)</h3>
+<p>DBSCAN does not require specifying the number of clusters. Instead, it identifies dense regions and labels sparse points as noise. I test several <code>eps</code> values:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dbscan)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"DBSCAN sensitivity to eps (minPts = 10):</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>DBSCAN sensitivity to eps (minPts = 10):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (eps_val <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.8</span>, <span class="fl">1.0</span>, <span class="fl">1.5</span>, <span class="fl">2.0</span>, <span class="fl">2.5</span>, <span class="fl">3.0</span>)) {</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>  db <span class="ot">&lt;-</span> <span class="fu">dbscan</span>(X_scaled, <span class="at">eps =</span> eps_val, <span class="at">minPts =</span> <span class="dv">10</span>)</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  n_clusters <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(db<span class="sc">$</span>cluster[db<span class="sc">$</span>cluster <span class="sc">!=</span> <span class="dv">0</span>]))</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>  n_noise    <span class="ot">&lt;-</span> <span class="fu">sum</span>(db<span class="sc">$</span>cluster <span class="sc">==</span> <span class="dv">0</span>)</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"  eps = %.1f: %d cluster(s), %d noise points (%.1f%%)</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>              eps_val, n_clusters, n_noise, n_noise <span class="sc">/</span> <span class="fu">nrow</span>(X_scaled) <span class="sc">*</span> <span class="dv">100</span>))</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  eps = 0.8: 1 cluster(s), 183 noise points (4.2%)
+  eps = 1.0: 1 cluster(s), 132 noise points (3.1%)
+  eps = 1.5: 1 cluster(s), 77 noise points (1.8%)
+  eps = 2.0: 1 cluster(s), 52 noise points (1.2%)
+  eps = 2.5: 1 cluster(s), 39 noise points (0.9%)
+  eps = 3.0: 1 cluster(s), 32 noise points (0.7%)</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply DBSCAN with eps = 1.5</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>db_model <span class="ot">&lt;-</span> <span class="fu">dbscan</span>(X_scaled, <span class="at">eps =</span> <span class="fl">1.5</span>, <span class="at">minPts =</span> <span class="dv">10</span>)</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>customers<span class="sc">$</span>dbscan_cluster <span class="ot">&lt;-</span> db_model<span class="sc">$</span>cluster</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">DBSCAN Cluster Sizes (eps = 1.5):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+DBSCAN Cluster Sizes (eps = 1.5):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(customers<span class="sc">$</span>dbscan_cluster)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+   0    1 
+  77 4235 </code></pre>
+</div>
+</div>
+<p><strong>Interpretation</strong>: The results from using DBSCAN show <strong>a single dense-core cluster</strong> in every case where a different <strong>number of “noise” or outlier points are found</strong> (cluster 0 in R’s dbscan). What this means is that we can say that the customer data constitutes a single <strong>continuous-density area in feature space</strong>, with the extreme (outlier) customers located near the edge of this area. While DBSCAN effectively identifies the outlier (or “noise”) customers (the points that represent the most extreme customers), it does <strong>not identify two or more discrete, dense areas</strong>. Thus, based upon these results, I have evidence that the data has a <strong>single core with a long tail</strong>, as opposed to <strong>two or more separate clusters</strong>.</p>
+<hr>
+</section>
+<section id="hierarchical-clustering" class="level3">
+<h3 class="anchored" data-anchor-id="hierarchical-clustering">4.3 Hierarchical Clustering</h3>
+<p>I apply hierarchical clustering, which creates a tree of merged subsets, by using Ward’s Method (which uses the minimum increase in sum of squares at each step of merging; i.e., similar to K-means) to a randomly sampled set of 1000 customers so as to speed up computation:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>sample_idx    <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(X_scaled), <span class="dv">1000</span>)</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>X_sample      <span class="ot">&lt;-</span> X_scaled[sample_idx, ]</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>dist_matrix   <span class="ot">&lt;-</span> <span class="fu">dist</span>(X_sample)</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>hc_model      <span class="ot">&lt;-</span> <span class="fu">hclust</span>(dist_matrix, <span class="at">method =</span> <span class="st">"ward.D2"</span>)</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(hc_model, <span class="at">labels =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Hierarchical Clustering Dendrogram (Ward, n = 1000 sample)"</span>,</span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Linkage Distance"</span>)</span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">15</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>, <span class="at">legend =</span> <span class="st">"Cut at 4 clusters"</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="week5_clustering_R_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>hc_clusters <span class="ot">&lt;-</span> <span class="fu">cutree</span>(hc_model, <span class="at">k =</span> <span class="dv">4</span>)</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Hierarchical Cluster Sizes (k = 4, sample of 1000):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Hierarchical Cluster Sizes (k = 4, sample of 1000):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(hc_clusters)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>hc_clusters
+  1   2   3   4 
+ 74 530 143 253 </code></pre>
+</div>
+</div>
+<p>The dendrogram indicates that there is a significant separation (large jumps) from the first two levels (top), which would suggest an initial grouping of 2-3 large groups. Further down in the tree (fine structure), there will be smaller subgroups. The final clustering at four groups has resulted in a distribution similar to that obtained by K-means; i.e., one large cluster, one moderate sized cluster and several very small clusters of extreme customers. The fact that these algorithms have produced a similar structure to the customer types increases confidence in the structure that I have identified.</p>
+<hr>
+</section>
+</section>
+<section id="step-5---visualisation-and-evaluation" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="step-5---visualisation-and-evaluation">Step 5 - Visualisation and Evaluation</h2>
+<section id="pca-visualisation" class="level3">
+<h3 class="anchored" data-anchor-id="pca-visualisation">PCA Visualisation</h3>
+<p>I use PCA to reduce our 6 features to 2 dimensions for plotting. PCA finds the directions of maximum variance in the data:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>pca_result <span class="ot">&lt;-</span> <span class="fu">prcomp</span>(X_scaled, <span class="at">center =</span> <span class="cn">FALSE</span>, <span class="at">scale. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>var_explained <span class="ot">&lt;-</span> <span class="fu">summary</span>(pca_result)<span class="sc">$</span>importance[<span class="dv">2</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>]</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"PC1 explains"</span>, <span class="fu">round</span>(var_explained[<span class="dv">1</span>] <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"% of variance</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>PC1 explains 39.5 % of variance</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"PC2 explains"</span>, <span class="fu">round</span>(var_explained[<span class="dv">2</span>] <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"% of variance</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>PC2 explains 23.3 % of variance</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Total explained by 2 components:"</span>,</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">round</span>(<span class="fu">sum</span>(var_explained) <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"%</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Total explained by 2 components: 62.8 %</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>X_pca <span class="ot">&lt;-</span> pca_result<span class="sc">$</span>x[, <span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a><span class="co"># K-Means PCA plot</span></span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(X_pca[, <span class="dv">1</span>], X_pca[, <span class="dv">2</span>],</span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">col  =</span> customers<span class="sc">$</span>kmeans_cluster,</span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">pch  =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.6</span>,</span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="fu">paste0</span>(<span class="st">"PC1 ("</span>, <span class="fu">round</span>(var_explained[<span class="dv">1</span>] <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"%)"</span>),</span>
+<span id="cb52-8"><a href="#cb52-8" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">paste0</span>(<span class="st">"PC2 ("</span>, <span class="fu">round</span>(var_explained[<span class="dv">2</span>] <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"%)"</span>),</span>
+<span id="cb52-9"><a href="#cb52-9" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"K-Means Clusters (k = 4)"</span>)</span>
+<span id="cb52-10"><a href="#cb52-10" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>, <span class="at">legend =</span> <span class="fu">paste</span>(<span class="st">"Cluster"</span>, <span class="fu">sort</span>(<span class="fu">unique</span>(customers<span class="sc">$</span>kmeans_cluster))),</span>
+<span id="cb52-11"><a href="#cb52-11" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">sort</span>(<span class="fu">unique</span>(customers<span class="sc">$</span>kmeans_cluster)), <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.7</span>)</span>
+<span id="cb52-12"><a href="#cb52-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-13"><a href="#cb52-13" aria-hidden="true" tabindex="-1"></a><span class="co"># DBSCAN PCA plot</span></span>
+<span id="cb52-14"><a href="#cb52-14" aria-hidden="true" tabindex="-1"></a>dbscan_colours <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(customers<span class="sc">$</span>dbscan_cluster <span class="sc">==</span> <span class="dv">0</span>, <span class="st">"red"</span>, <span class="st">"steelblue"</span>)</span>
+<span id="cb52-15"><a href="#cb52-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(X_pca[, <span class="dv">1</span>], X_pca[, <span class="dv">2</span>],</span>
+<span id="cb52-16"><a href="#cb52-16" aria-hidden="true" tabindex="-1"></a>     <span class="at">col  =</span> dbscan_colours,</span>
+<span id="cb52-17"><a href="#cb52-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">pch  =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.6</span>,</span>
+<span id="cb52-18"><a href="#cb52-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="fu">paste0</span>(<span class="st">"PC1 ("</span>, <span class="fu">round</span>(var_explained[<span class="dv">1</span>] <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"%)"</span>),</span>
+<span id="cb52-19"><a href="#cb52-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="fu">paste0</span>(<span class="st">"PC2 ("</span>, <span class="fu">round</span>(var_explained[<span class="dv">2</span>] <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"%)"</span>),</span>
+<span id="cb52-20"><a href="#cb52-20" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"DBSCAN (eps = 1.5)"</span>)</span>
+<span id="cb52-21"><a href="#cb52-21" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topright"</span>, <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Core"</span>, <span class="st">"Noise"</span>),</span>
+<span id="cb52-22"><a href="#cb52-22" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"steelblue"</span>, <span class="st">"red"</span>), <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">cex =</span> <span class="fl">0.7</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="week5_clustering_R_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>A large percentage (~63%) of variance is explained by PCA projection, which reveals a tight concentration of the majority of customers at the origin with the exception of some outliers located on PC1. The K-means method divides the space into four areas. In contrast to K-means, the DBSCAN approach creates a central cluster of high-density customer data and labels all outliers in the database as “noise.” Therefore, the two clustering approaches can be used together for the purpose of obtaining an overall view of the clustering results. The K-means approach allows for the identification of specific segments that can be interpreted. The DBSCAN approach provides a way to understand the general density structure of the data, and it also helps to identify those customer records that represent outliers.</p>
+</section>
+<section id="pca-loadings" class="level3">
+<h3 class="anchored" data-anchor-id="pca-loadings">PCA Loadings</h3>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>loadings <span class="ot">&lt;-</span> pca_result<span class="sc">$</span>rotation[, <span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>]</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(loadings) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"PC1"</span>, <span class="st">"PC2"</span>)</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"PCA Loadings:</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>PCA Loadings:</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">round</span>(loadings, <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                         PC1    PC2
+total_spend            0.520 -0.102
+num_transactions       0.566  0.184
+recency               -0.265 -0.220
+num_distinct_products  0.513  0.239
+avg_basket_value       0.252 -0.620
+avg_qty_per_txn        0.110 -0.682</code></pre>
+</div>
+</div>
+<p>The loadings for PC1 are primarily associated with spend-related characteristics (e.g., total spend, number of transactions, distinct products) and therefore represent an overall “customer activity” axis. The loadings for PC2 are related to recency and average quantity and thus distinguish recent active customers from those who are inactive.</p>
+<hr>
+</section>
+</section>
+<section id="discussion-and-limitations" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="discussion-and-limitations">Discussion and Limitations</h2>
+<section id="what-distinguishes-each-cluster" class="level3">
+<h3 class="anchored" data-anchor-id="what-distinguishes-each-cluster">What distinguishes each cluster?</h3>
+<p>Four customer groups emerged from a k-means analysis with distinct behavioral patterns:</p>
+<ol type="1">
+<li><strong>Regular Active Customers</strong>: Most frequent buyers; moderate to recent purchase history; moderate total spend.</li>
+<li><strong>Lapsed/Infrequent Buyers</strong>: Low-spend; High Recency; do not buy frequently (or at all).</li>
+<li><strong>VIP/Wholesale Buyers</strong>: Extremely high total spend; extremely high total number of transactions; extreme purchasing power.</li>
+<li><strong>Bulk Purchasers</strong>: Unusually large quantity in each transaction; do not necessarily have an unusually high total number of transactions or spend.</li>
+</ol>
+</section>
+<section id="are-clusters-balanced" class="level3">
+<h3 class="anchored" data-anchor-id="are-clusters-balanced">Are clusters balanced?</h3>
+<p>No - nor should they be expected to. A natural power law exists for retail customer distributions most customers buy moderately (a long-tail of very-high value buyers) so it is to be expected that cluster sizes will have some imbalance in size due to how many people exist at each end of the spectrum.</p>
+</section>
+<section id="sensitivity-to-parameter-choices" class="level3">
+<h3 class="anchored" data-anchor-id="sensitivity-to-parameter-choices">Sensitivity to parameter choices</h3>
+<ul>
+<li><strong>K</strong> <strong>in K-Means</strong>: Changing k from 3 to 5 mostly splits the large cluster that was regular into smaller sections of the same type; The extreme cluster types have remained the same. This implies that extreme customer groups are strong and the border between “regular” and “lapsed” customers is less clear cut.</li>
+<li><strong>Eps</strong> <strong>in DBSCAN</strong>: DBSCAN has identified exactly 1 core cluster no matter what value of eps I used. This implies there are not at least two or more distinct, separated, dense regions in this data set – it is a gradual distribution rather than discrete clusters.</li>
+<li><strong>Scaling Method</strong>: I used Standardisation (z-score) for the scaling. Min-max Scaling will cause outliers to be compressed differently and could cause differences in how cluster boundaries are defined, especially with respect to the extreme segments.</li>
+</ul>
+</section>
+<section id="limitations" class="level3">
+<h3 class="anchored" data-anchor-id="limitations">Limitations</h3>
+<ol type="1">
+<li><strong>Only 63% of total variance explained by two PCA components.</strong> The cluster images present a compressed image; the cluster images may represent separation within unseen dimensionality.</li>
+<li><strong>K-means assumes spherical clusters,</strong> which does not describe the heavy tailed distribution of retail spending. The small extreme clusters have been at least partially created as a result of K-means assuming spherical clusters.</li>
+<li><strong>Customer segment definition is based on feature selection.</strong> Six features that place emphasis on both financial expenditure and frequency were selected to define similarities between customers. Different customer segments may be produced with alternative combinations of features (for example geographic diversity or purchasing patterns related to time of day).</li>
+<li>**Cancellations and returns were excluded from the analysis, therefore we may be missing “problematic” customer segments that are defined by the number of returns.</li>
+<li><strong>The clustering represents a snapshot of customer behaviour.</strong> Customer behaviour can change over time; the customer segments described here represent behaviour across all of the data, rather than the current behaviour of our customers.</li>
+</ol>
+</section>
+<section id="key-takeaway" class="level3">
+<h3 class="anchored" data-anchor-id="key-takeaway">Key takeaway</h3>
+<p>Different algorithms offer a different look at the same information. K-means will give you segments of your data that can help guide your marketing strategy. DBSCAN shows us that we are dealing with one large segment of customers, but there are some extreme outliers in our customer base. The large scale of the groups (segments) is confirmed with hierarchical clustering. There isn’t an algorithm that will give you the “right” or “true” answer to the question of how to segment your customers; each method has its own set of assumptions, and it’s only through interpreting the results of each segmentation method that they provide value.</p>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
